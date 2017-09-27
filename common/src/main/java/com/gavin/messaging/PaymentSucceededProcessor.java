@@ -7,7 +7,7 @@ import org.springframework.messaging.SubscribableChannel;
 
 /**
  * 通知支付已成功的消息通道。
- * payment-service -> order-service
+ * payment -> order
  */
 public interface PaymentSucceededProcessor {
 

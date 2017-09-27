@@ -7,7 +7,7 @@ import org.springframework.messaging.SubscribableChannel;
 
 /**
  * 取消保留商品的消息通道。
- * order-service -> product-service
+ * order -> product
  */
 public interface CancelReservationProcessor {
 

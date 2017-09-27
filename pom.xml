@@ -14,17 +14,18 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>1.4.2.RELEASE</version>
+        <version>1.5.3.RELEASE</version>
     </parent>
 
     <modules>
         <module>common</module>
-        <module>business-services</module>
-        <module>eureka-service</module>
-        <module>config-service</module>
-        <module>zuul-service</module>
-        <module>oauth2-service</module>
-        <module>zipkin-service</module>
+        <module>services</module>
+        <module>eureka</module>
+        <module>config</module>
+        <module>zuul</module>
+        <module>oauth</module>
+        <module>admin</module>
+        <module>zipkin</module>
         <module>hystrix-dashboard</module>
     </modules>
 
@@ -32,12 +33,14 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
+        <spring-cloud.version>Dalston.RELEASE</spring-cloud.version>
+        <spring-boot-admin.version>1.5.0</spring-boot-admin.version>
         <hibernate.validator.version>5.2.4.Final</hibernate.validator.version>
-        <spotify.version>0.4.11</spotify.version>
+        <spotify.version>0.4.13</spotify.version>
         <lombok.version>1.16.10</lombok.version>
 
-        <registry.host>192.168.1.88</registry.host>
-        <registry.port>5000</registry.port>
+        <docker.registry>registry.gavin.com</docker.registry>
+        <docker.registry.url>https://registry.gavin.com</docker.registry.url>
     </properties>
 
     <dependencyManagement>
@@ -45,17 +48,11 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>Camden.SR2</version>
+                <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-stream-dependencies</artifactId>
-                <version>Brooklyn.SR1</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+
             <dependency>
                 <groupId>com.gavin</groupId>
                 <artifactId>common</artifactId>
@@ -63,14 +60,19 @@
             </dependency>
 
             <dependency>
+                <groupId>de.codecentric</groupId>
+                <artifactId>spring-boot-admin-starter-client</artifactId>
+                <version>${spring-boot-admin.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpclient</artifactId>
                 <version>4.5.2</version>
             </dependency>
             <dependency>
-                <groupId>com.netflix.feign</groupId>
+                <groupId>io.github.openfeign</groupId>
                 <artifactId>feign-httpclient</artifactId>
-                <version>8.18.0</version>
+                <version>9.5.0</version>
             </dependency>
             <dependency>
                 <groupId>org.projectlombok</groupId>
@@ -88,6 +90,11 @@
                 <version>2.9.4</version>
             </dependency>
             <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.8.0</version>
+            </dependency>
+            <dependency>
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
                 <version>4.7</version>
@@ -103,9 +110,9 @@
                 <version>2.5.0</version>
             </dependency>
             <dependency>
-                <groupId>org.flywaydb</groupId>
-                <artifactId>flyway-core</artifactId>
-                <version>4.0.3</version>
+                <groupId>org.liquibase</groupId>
+                <artifactId>liquibase-core</artifactId>
+                <version>3.5.3</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -118,25 +125,113 @@
         </dependency>
     </dependencies>
 
-    <!--<distributionManagement>-->
-        <!--<repository>-->
-            <!--<id>nexus</id>-->
-            <!--<name>Releases</name>-->
-            <!--<url>http://localhost:8081/repository/maven-releases</url>-->
-        <!--</repository>-->
-        <!--<snapshotRepository>-->
-            <!--<id>nexus</id>-->
-            <!--<name>Snapshot</name>-->
-            <!--<url>http://localhost:8081/repository/maven-snapshots</url>-->
-        <!--</snapshotRepository>-->
-    <!--</distributionManagement>-->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.spotify</groupId>
+                    <artifactId>docker-maven-plugin</artifactId>
+                    <version>${spotify.version}</version>
+                    <configuration>
+                        <forceTags>true</forceTags>
+                        <imageTags>
+                            <imageTag>latest</imageTag>
+                        </imageTags>
+                        <serverId>docker-hub</serverId>
+                        <registryUrl>${docker.registry.url}</registryUrl>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>build-image</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>build</goal>
+                            </goals>
+                            <configuration>
+                                <imageName>${project.artifactId}</imageName>
+                                <dockerDirectory>${project.basedir}/docker</dockerDirectory>
+                                <resources>
+                                    <resource>
+                                        <targetPath>/</targetPath>
+                                        <directory>${project.build.directory}</directory>
+                                        <include>${project.build.finalName}.jar</include>
+                                    </resource>
+                                </resources>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>tag-image</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>tag</goal>
+                            </goals>
+                            <configuration>
+                                <image>${project.artifactId}</image>
+                                <newName>${docker.registry}/${project.artifactId}</newName>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>clean-image</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>removeImage</goal>
+                            </goals>
+                            <configuration>
+                                <imageName>${project.artifactId}</imageName>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>push-image</id>
+                            <phase>deploy</phase>
+                            <goals>
+                                <goal>push</goal>
+                            </goals>
+                            <configuration>
+                                <imageName>${docker.registry}/${project.artifactId}</imageName>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 
-    <!--<repositories>-->
-        <!--<repository>-->
-            <!--<id>nexus</id>-->
-            <!--<name>Releases</name>-->
-            <!--<url>http://localhost:8081/repository/maven-releases</url>-->
-        <!--</repository>-->
-    <!--</repositories>-->
+    <distributionManagement>
+        <repository>
+            <id>nexus</id>
+            <name>Releases</name>
+            <url>http://nexus.gavin.com:8081/repository/maven-releases</url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus</id>
+            <name>Snapshot</name>
+            <url>http://nexus.gavin.com:8081/repository/maven-snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>nexus-releases</id>
+            <name>Releases</name>
+            <url>http://nexus.gavin.com:8081/repository/maven-releases</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>nexus-snapshots</id>
+            <name>Snapshot</name>
+            <url>http://nexus.gavin.com:8081/repository/maven-snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
 </project>

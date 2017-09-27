@@ -1,18 +1,19 @@
 package com.gavin.client.address;
 
-import com.gavin.config.OAuth2FeignConfiguration;
-import com.gavin.model.Response;
-import com.gavin.model.vo.address.AddressVo;
+import com.gavin.dto.common.CustomResponseBody;
+import com.gavin.dto.address.AddressDto;
 import org.springframework.cloud.netflix.feign.FeignClient;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 
-@FeignClient(value = "address-service", fallback = AddressClientFallback.class, configuration = {OAuth2FeignConfiguration.class})
+@FeignClient(value = "address", fallbackFactory = AddressClientFallbackFactory.class)
 public interface AddressClient {
 
-    @RequestMapping(value = "/addresses/{address_id}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-    Response<AddressVo> findAddressById(@PathVariable("address_id") String _addressId);
+    @RequestMapping(value = "/addresses/{address_id}", method = RequestMethod.GET)
+    CustomResponseBody<AddressDto> findAddressById(@PathVariable("address_id") String _addressId);
+
+    @RequestMapping(value = "/addresses/default", method = RequestMethod.GET)
+    CustomResponseBody<AddressDto> findDefaultAddress();
 
 }

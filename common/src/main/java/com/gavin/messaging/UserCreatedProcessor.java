@@ -7,7 +7,7 @@ import org.springframework.messaging.SubscribableChannel;
 
 /**
  * 通知用户创建成功的消息通道。
- * user-service -> notification-service
+ * user -> notification
  */
 public interface UserCreatedProcessor {
 

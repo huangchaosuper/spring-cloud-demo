@@ -7,7 +7,7 @@ import org.springframework.messaging.SubscribableChannel;
 
 /**
  * 要求支付的消息通道。
- * order-service -> payment-service
+ * order -> payment
  */
 public interface WaitingForPaymentProcessor {
 

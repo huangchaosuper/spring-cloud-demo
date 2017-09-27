@@ -7,7 +7,7 @@ import org.springframework.messaging.SubscribableChannel;
 
 /**
  * 订单支付成功后指示发货的消息通道。
- * order-service -> delivery-service
+ * order -> delivery
  */
 public interface ArrangeShipmentProcessor {
 

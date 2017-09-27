@@ -7,7 +7,7 @@ import org.springframework.messaging.SubscribableChannel;
 
 /**
  * 通知用户已激活的消息通道。
- * user-service -> point-service
+ * user -> point
  */
 public interface UserActivatedProcessor {
 
